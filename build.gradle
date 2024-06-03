@@ -1,0 +1,36 @@
+plugins {
+	id 'java'
+}
+
+group = 'com.gamebuster19901'
+
+ext {
+	exportedModules = [
+		"jdk.compiler/com.sun.tools.javac.model",
+	    "jdk.compiler/com.sun.tools.javac.api",
+	    "jdk.compiler/com.sun.tools.javac.util",
+	    "jdk.compiler/com.sun.tools.javac.tree",
+	    "jdk.compiler/com.sun.tools.javac.code",
+	    "jdk.compiler/com.sun.tools.javac.comp",
+	    "jdk.compiler/com.sun.tools.javac.processing",
+	    "jdk.compiler/com.sun.tools.javac.file",
+	    "jdk.compiler/com.sun.source.tree"
+	]
+	
+	exportedTo = [
+	    "com.gamebuster19901.jtype.processor",
+	    "ALL-UNNAMED" //required for the javac compiler in JType
+	]
+}
+
+subprojects {
+	apply plugin: 'java'
+	apply plugin: 'eclipse'
+
+	plugins.withType(JavaPlugin).configureEach {
+		java {
+			modularity.inferModulePath = true
+		}
+	}
+	
+}

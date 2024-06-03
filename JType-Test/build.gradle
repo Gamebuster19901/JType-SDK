@@ -1,0 +1,139 @@
+plugins {
+	id 'java-library'
+	id 'maven-publish'
+	id("com.diffplug.eclipse.apt") version "3.44.0"
+}
+
+repositories {
+	mavenCentral()
+}
+
+sourceCompatibility = 21
+targetCompatibility = 21
+
+version = "${project.JTypeVersion}"
+
+
+dependencies {
+	implementation project(':JType-Compiler')
+	annotationProcessor project(':JType-Compiler')
+	
+}
+
+// Configure annotation processing for the Eclipse IDE
+eclipse{
+        project {
+            buildCommand("org.eclipse.buildship.core.gradleprojectbuilder")
+            natures("org.eclipse.buildship.core.gradleprojectnature")
+        }
+        // Reset all Eclipse settings when "Refresh Gradle Project" is executed
+        synchronizationTasks("cleanEclipse", "eclipse")
+}
+
+plugins.withType(JavaPlugin).configureEach {
+	java {
+		modularity.inferModulePath = true
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+task sourcesJar(type: Jar) {
+	archiveClassifier.set("sources")
+	from sourceSets.main.allSource
+}
+
+import org.apache.tools.ant.filters.ReplaceTokens
+task processSource(type: Sync) {
+	from sourceSets.main.java
+	into "$buildDir/src"
+	inputs.property 'JTypeVersion',  JTypeVersion;
+	
+	filter(ReplaceTokens, tokens: [JTypeVersion: JTypeVersion])
+}
+
+def exportedModules = project(':').exportedModules
+
+def exportedTo = project(':').exportedTo
+
+tasks.withType(JavaCompile) {
+    doFirst {
+        exportedModules.each { module ->
+            exportedTo.findAll { it != module }.each { targetModule ->
+                options.forkOptions.jvmArgs << '--add-exports' << module + '=' + targetModule
+            }
+        }
+        def compilerArgs = options.compilerArgs.join(' ')
+        def sourceFiles = source.collect { it.path }
+        project.logger.lifecycle("javac command: javac $compilerArgs ${sourceFiles.join(' ')}")
+    }
+}
+
+tasks.withType(JavaCompile) {
+    doFirst {
+        def compilerArgs = options.compilerArgs.join(' ')
+        def sourceFiles = source.collect { it.path }
+        project.logger.lifecycle("javac command: javac $compilerArgs ${sourceFiles.join(' ')}")
+    }
+}
+
+tasks.withType(JavaCompile) { compileTask ->
+	def pluginJar = project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile
+	compileTask.doFirst {
+		project.logger.lifecycle("Classpath: " + project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile)
+		if (!pluginJar.exists()) {
+		    throw new GradleException("Plugin JAR file does not exist: " + pluginJar)
+		}
+	}
+    options.compilerArgs += [
+    	'-verbose',
+        '-Xplugin:JType'
+    ]
+    options.fork = true
+    options.forkOptions.jvmArgs += [
+    	'--module-path', files(pluginJar).asPath,
+    ]
+    options.compilerArgs.each { arg ->
+        project.logger.lifecycle("Compiler argument: $arg")
+    }
+}
+
+
+compileJava {
+	source = processSource.outputs
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+        resources {
+            srcDirs = ['src/test/resources']
+        }
+    }
+}
+
+artifacts {
+    archives jar
+    archives sourcesJar
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}

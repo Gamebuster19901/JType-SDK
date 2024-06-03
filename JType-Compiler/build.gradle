@@ -1,0 +1,58 @@
+plugins {
+    id 'java-library'
+    id 'eclipse'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	
+}
+
+tasks.named('test') {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+}
+
+plugins.withType(JavaPlugin).configureEach {
+	java {
+		modularity.inferModulePath = true
+	}
+}
+
+def exportedModules = project(':').exportedModules
+
+def exportedTo = project(':').exportedTo
+
+tasks.withType(JavaCompile) {
+    doFirst {
+        exportedModules.each { module ->
+            exportedTo.findAll { it != module }.each { targetModule ->
+                options.compilerArgs << '--add-exports' << module + '=' + targetModule
+            }
+        }
+        def compilerArgs = options.compilerArgs.join(' ')
+        def sourceFiles = source.collect { it.path }
+        project.logger.lifecycle("javac command: javac $compilerArgs ${sourceFiles.join(' ')}")
+    }
+}
+
+eclipse {
+    classpath {
+        file {
+            whenMerged { classpath ->
+                classpath.entries.findAll { it.kind == "con" && it.path.startsWith("org.eclipse.jdt.launching.JRE_CONTAINER") }.each { con ->
+                    // Build comma-separated list of module exports
+                    def addExportsList = exportedModules.collect { module ->
+                        module + '=' + exportedTo.findAll { it != module }.join(',')
+                    }.join(':')
+
+                    // Set the add-exports attribute
+                    con.entryAttributes['add-exports'] = addExportsList
+                }
+            }
+        }
+    }
+}
