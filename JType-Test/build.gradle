@@ -63,6 +63,16 @@ tasks.withType(JavaCompile) { compileTask ->
 		if (!pluginJar.exists()) {
 		    throw new GradleException("Plugin JAR file does not exist: " + pluginJar)
 		}
+		
+		exportedModules.each { module ->
+            exportedTo.findAll { it != module }.each { targetModule ->
+                options.forkOptions.jvmArgs << '--add-exports' << module + '=' + targetModule
+            }
+        }
+        def compilerArgs = options.compilerArgs.join(' ')
+        def sourceFiles = source.collect { it.path }
+        project.logger.lifecycle("javac command: javac $compilerArgs ${sourceFiles.join(' ')}")
+		
 	}
     options.compilerArgs += [
     	'-verbose',
