@@ -15,9 +15,7 @@ version = "${project.JTypeVersion}"
 
 
 dependencies {
-	implementation project(':JType-Compiler')
-	annotationProcessor project(':JType-Compiler')
-	
+	compileOnly project(':JType-Compiler')
 }
 
 // Configure annotation processing for the Eclipse IDE
@@ -58,31 +56,10 @@ def exportedModules = project(':').exportedModules
 
 def exportedTo = project(':').exportedTo
 
-tasks.withType(JavaCompile) {
-    doFirst {
-        exportedModules.each { module ->
-            exportedTo.findAll { it != module }.each { targetModule ->
-                options.forkOptions.jvmArgs << '--add-exports' << module + '=' + targetModule
-            }
-        }
-        def compilerArgs = options.compilerArgs.join(' ')
-        def sourceFiles = source.collect { it.path }
-        project.logger.lifecycle("javac command: javac $compilerArgs ${sourceFiles.join(' ')}")
-    }
-}
-
-tasks.withType(JavaCompile) {
-    doFirst {
-        def compilerArgs = options.compilerArgs.join(' ')
-        def sourceFiles = source.collect { it.path }
-        project.logger.lifecycle("javac command: javac $compilerArgs ${sourceFiles.join(' ')}")
-    }
-}
-
 tasks.withType(JavaCompile) { compileTask ->
 	def pluginJar = project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile
 	compileTask.doFirst {
-		project.logger.lifecycle("Classpath: " + project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile)
+		project.logger.lifecycle("Compiler plugin: " + project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile)
 		if (!pluginJar.exists()) {
 		    throw new GradleException("Plugin JAR file does not exist: " + pluginJar)
 		}
@@ -91,12 +68,12 @@ tasks.withType(JavaCompile) { compileTask ->
     	'-verbose',
         '-Xplugin:JType'
     ]
+    options.annotationProcessorPath += files(pluginJar)
     options.fork = true
     options.forkOptions.jvmArgs += [
-    	'--module-path', files(pluginJar).asPath,
+    	'--module-path=' + files(pluginJar).asPath
     ]
-    options.compilerArgs.each { arg ->
-        project.logger.lifecycle("Compiler argument: $arg")
+}
     }
 }
 

@@ -5,7 +5,6 @@
  * <p>
  * <strong>Warning:</strong> This module is under development, and its name, packages, classes, 
  * and exports are subject to frequent changes.
- * The annotation plugin is going to be removed in favor of the compiler plugin.
  * </p>
  *
  * @deprecated This module is under development, and its name, packages, classes, 
@@ -14,9 +13,7 @@
 @Deprecated(forRemoval = false)
 module com.gamebuster19901.jtype.processor {
     /**
-     * Exports the annotation processors related to JType processing.
-     * 
-     * Will be removed in favor of the compiler plugin.
+     * Exports the annotations related to JType processing.
      */
     exports com.gamebuster19901.jtype.annotation;
 
