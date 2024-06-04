@@ -74,9 +74,36 @@ tasks.withType(JavaCompile) { compileTask ->
     	'--module-path=' + files(pluginJar).asPath
     ]
 }
+
+task generateAntBuild {
+    doLast {
+    	project.logger.lifecycle("building");
+        def antBuildFile = file('build.xml')
+        def pluginJar = project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile
+        antBuildFile.text = """
+        <project name="ExampleProject" basedir="." default="compile">
+            <property name="src.dir" value="src/main/java"/>
+            <property name="build.dir" value="build/classes/java/main"/>
+            <property name="plugin.name" value="JType"/>
+
+            <target name="init">
+                <mkdir dir="\${build.dir}"/>
+            </target>
+
+            <target name="compile" depends="init">
+                <javac srcdir="\${src.dir}" destdir="\${build.dir}" debug="true">
+                    <compilerarg value="-Xplugin:\${plugin.name}"/>
+                    <compilerarg value="-J--module-path"/>
+                    <compilerarg value="${pluginJar}"/>
+                    <compiler name="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+                </javac>
+            </target>
+        </project>
+        """
     }
 }
 
+tasks.eclipse.dependsOn generateAntBuild
 
 compileJava {
 	source = processSource.outputs
