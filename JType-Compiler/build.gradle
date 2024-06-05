@@ -23,14 +23,21 @@ plugins.withType(JavaPlugin).configureEach {
 }
 
 def exportedModules = project(':').exportedModules
+def openedModules = project(':').openedModules
 
 def exportedTo = project(':').exportedTo
+def openedTo = project(':').openedTo
 
 tasks.withType(JavaCompile) {
     doFirst {
         exportedModules.each { module ->
             exportedTo.findAll { it != module }.each { targetModule ->
                 options.compilerArgs << '--add-exports' << module + '=' + targetModule
+            }
+        }
+        openedModules.each { module ->
+            openedTo.findAll { it != module }.each { targetModule ->
+                options.compilerArgs << '--add-opens' << module + '=' + targetModule
             }
         }
         def compilerArgs = options.compilerArgs.join(' ')

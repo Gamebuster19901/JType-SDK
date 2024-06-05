@@ -6,7 +6,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
-import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.TreeScanner;
@@ -20,14 +19,12 @@ import com.sun.source.util.TaskEvent;
 import com.sun.source.util.TaskListener;
 import com.sun.source.util.Trees;
 
-import com.sun.tools.javac.model.JavacTypes;
-
 import com.gamebuster19901.jtype.annotation.Unsigned;
 
 class TaskDelegator implements TaskListener, Tasked {
 
 	private final JavacTask task;
-	private final JavacTypes types;
+	private final Types types;
 	private final Trees trees;
 	private final Context context;
 	
@@ -35,7 +32,7 @@ class TaskDelegator implements TaskListener, Tasked {
 		this.task = task;
 		this.trees = Trees.instance(task);
 		this.context = ((BasicJavacTask)task).getContext();
-		this.types = JavacTypes.instance(context);
+		this.types = Types.instance(context);
 	}
 	
 	@Override
@@ -148,8 +145,7 @@ class TaskDelegator implements TaskListener, Tasked {
 				raiseError("@Unsigned not yet implemented on array types", tree.vartype, compilationUnit);
 				return;
 			}
-			
-			if(types.unboxedType(tree.type) != Type.noType) {
+			if(types.unboxedTypeOrType(tree.type).isPrimitive()) {
 
 				switch(types.unboxedType(tree.type).getKind()) {
 					case VOID:

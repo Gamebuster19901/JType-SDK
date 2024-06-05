@@ -52,9 +52,23 @@ task processSource(type: Sync) {
 	filter(ReplaceTokens, tokens: [JTypeVersion: JTypeVersion])
 }
 
+task runAntBuild {
+    group = 'build'
+    description = 'Run Ant build'
+    dependsOn 'clean'
+
+    doLast {
+        project.logger.lifecycle("Running Ant build")
+        ant.lifecycleLogLevel = 'INFO' // Ensure Ant logs are printed
+        ant.build(file: 'antbuild.xml', target: 'compile')
+    }
+}
+
 def exportedModules = project(':').exportedModules
+def openedModules = project(':').openedModules
 
 def exportedTo = project(':').exportedTo
+def openedTo = project(':').openedTo
 
 tasks.withType(JavaCompile) { compileTask ->
 	def pluginJar = project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile
@@ -67,6 +81,11 @@ tasks.withType(JavaCompile) { compileTask ->
 		exportedModules.each { module ->
             exportedTo.findAll { it != module }.each { targetModule ->
                 options.forkOptions.jvmArgs << '--add-exports' << module + '=' + targetModule
+            }
+        }
+        openedModules.each { module ->
+            openedTo.findAll { it != module }.each { targetModule ->
+                options.forkOptions.jvmArgs << '--add-opens' << module + '=' + targetModule
             }
         }
         def compilerArgs = options.compilerArgs.join(' ')
@@ -87,9 +106,18 @@ tasks.withType(JavaCompile) { compileTask ->
 
 task generateAntBuild {
     doLast {
-    	project.logger.lifecycle("building");
+        project.logger.lifecycle("Building Ant build file")
         def antBuildFile = file('build.xml')
         def pluginJar = project(':JType-Compiler').tasks.getByName('jar').outputs.files.singleFile
+        
+        // Collect export arguments correctly as separate arguments
+        def exportArgs = exportedModules.collect { module ->
+            exportedTo.collect { target ->
+                """<compilerarg value="--add-exports"/>
+                    <compilerarg value="${module}=${target}"/>"""
+            }.join("\n                    ")
+        }.join("\n                    ")
+
         antBuildFile.text = """
         <project name="ExampleProject" basedir="." default="compile">
             <property name="src.dir" value="src/main/java"/>
@@ -103,16 +131,17 @@ task generateAntBuild {
             <target name="compile" depends="init">
                 <javac srcdir="\${src.dir}" destdir="\${build.dir}" debug="true">
                     <compilerarg value="-Xplugin:\${plugin.name}"/>
-                    <compilerarg value="-J--module-path"/>
-                    <compilerarg value="${pluginJar}"/>
-                    <compiler name="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+                    <compilerarg value="-processorpath"/>
+                    <compilerarg value="${pluginJar.absolutePath}"/>
+                    <compilerarg value="THIS_IS_AN_INVALID_ARGUMENT"/>
+                    ${exportArgs}
                 </javac>
             </target>
         </project>
         """
+        project.logger.lifecycle("Ant build file generated at: ${antBuildFile.absolutePath}")
     }
 }
-
 tasks.eclipse.dependsOn generateAntBuild
 
 compileJava {

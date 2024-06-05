@@ -21,6 +21,15 @@ ext {
 	    "com.gamebuster19901.jtype.processor",
 	    "ALL-UNNAMED" //required for the javac compiler in JType
 	]
+	
+	openedModules = [
+		"jdk.compiler/com.sun.tools.javac.util"
+	]
+	
+	openedTo = [
+		"com.gamebuster19901.jtype.processor",
+	    "ALL-UNNAMED" //required for the javac compiler in JType
+	]
 }
 
 subprojects {
